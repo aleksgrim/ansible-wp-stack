@@ -48,7 +48,9 @@
 
     - name: Kill any remaining processes owned by site user
       ansible.builtin.shell: |
-        pkill -9 -u {{ site_user }} || true
+        uid=$(id -u {{ site_user }} 2>/dev/null) || exit 0
+        [ -z "$uid" ] && exit 0
+        pkill -9 -u "$uid" 2>/dev/null || true
       changed_when: false
 
     - name: Wait for processes to die
