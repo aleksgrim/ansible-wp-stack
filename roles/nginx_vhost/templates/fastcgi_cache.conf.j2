@@ -1,0 +1,7 @@
+fastcgi_cache_path {{ nginx_cache_path }}
+    levels=1:2
+    keys_zone={{ nginx_cache_zone }}:100m
+    inactive=60m
+    max_size=1g;
+
+fastcgi_cache_key "$scheme$request_method$host$request_uri";

@@ -14,18 +14,13 @@
     group: www-data
     mode: '0755'
 
-- name: Ensure fastcgi_cache_path is in nginx.conf
-  ansible.builtin.blockinfile:
-    path: /etc/nginx/nginx.conf
-    insertafter: "http {"
-    marker: "# {mark} FASTCGI CACHE GLOBAL"
-    block: |
-      fastcgi_cache_path {{ nginx_cache_path }}
-          levels=1:2
-          keys_zone={{ nginx_cache_zone }}:100m
-          inactive=60m
-          max_size=1g;
-      fastcgi_cache_key "$scheme$request_method$host$request_uri";
+- name: Deploy FastCGI cache config
+  ansible.builtin.template:
+    src: fastcgi_cache.conf.j2
+    dest: /etc/nginx/conf.d/fastcgi_cache.conf
+    owner: root
+    group: root
+    mode: '0644'
   notify: Reload nginx
 
 - name: Deploy Nginx vhost config
