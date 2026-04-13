@@ -14,10 +14,10 @@
     group: www-data
     mode: '0755'
 
-- name: Remove legacy fastcgi_cache_path from nginx.conf
-  ansible.builtin.lineinfile:
+- name: Remove legacy fastcgi_cache block from nginx.conf
+  ansible.builtin.blockinfile:
     path: /etc/nginx/nginx.conf
-    regexp: '^\s*fastcgi_cache_path.*'
+    marker: "# {mark} FASTCGI CACHE GLOBAL"
     state: absent
   notify: Reload nginx
 
