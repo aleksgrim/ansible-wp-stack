@@ -1,4 +1,12 @@
 ---
+- name: Remove conflicting ondrej PHP PPA if exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/ondrej-ubuntu-php-noble.list
+    - /etc/apt/sources.list.d/ondrej-ubuntu-php-noble.sources
+
 - name: Install dependencies for PHP repo
   ansible.builtin.apt:
     name:
