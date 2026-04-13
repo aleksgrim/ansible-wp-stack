@@ -1,0 +1,51 @@
+---
+- name: Install dependencies for PHP repo
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - apt-transport-https
+      - software-properties-common
+    state: present
+    update_cache: true
+
+- name: Add Ondrej PHP PPA repository
+  ansible.builtin.apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+    update_cache: true
+
+- name: Install required PHP extensions
+  ansible.builtin.apt:
+    name:
+      - "php{{ php_version }}-fpm"
+      - "php{{ php_version }}-mysql"
+      - "php{{ php_version }}-curl"
+      - "php{{ php_version }}-gd"
+      - "php{{ php_version }}-mbstring"
+      - "php{{ php_version }}-xml"
+      - "php{{ php_version }}-zip"
+      - "php{{ php_version }}-intl"
+    state: present
+    update_cache: false
+
+- name: Deploy PHP-FPM pool config
+  ansible.builtin.template:
+    src: pool.conf.j2
+    dest: "/etc/php/{{ php_version }}/fpm/pool.d/{{ pool_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart php-fpm
+
+- name: Validate PHP-FPM config
+  ansible.builtin.command: "php-fpm{{ php_version }} --test"
+  register: fpm_test
+  changed_when: false
+  failed_when: fpm_test.rc != 0
+
+- name: Ensure PHP-FPM is running
+  ansible.builtin.service:
+    name: "php{{ php_version }}-fpm"
+    state: restarted
+    enabled: true
+

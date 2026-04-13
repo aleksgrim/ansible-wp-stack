@@ -1,0 +1,46 @@
+server {
+    listen 80;
+    server_name {{ domain }};
+
+    root {{ webroot }};
+    index index.php index.html;
+
+    client_max_body_size 64M;
+
+    # FastCGI cache skip rules
+    set $skip_cache 0;
+    if ($request_method = POST)          { set $skip_cache 1; }
+    if ($query_string != "")             { set $skip_cache 1; }
+    if ($http_cookie ~* "wordpress_logged_in|wp-postpass|woocommerce") {
+        set $skip_cache 1;
+    }
+    if ($request_uri ~* "/wp-admin/|/xmlrpc.php|wp-.*.php|/feed/|index.php|sitemap") {
+        set $skip_cache 1;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    # Block direct PHP in uploads
+    location ~* /(?:uploads|files)/.*\.php$ { deny all; }
+    location ~ /\.ht                        { deny all; }
+    location = /xmlrpc.php                  { deny all; }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/{{ sock_name }}.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+
+        # FastCGI Cache
+        fastcgi_cache {{ nginx_cache_zone }};
+        fastcgi_cache_valid 200 60m;
+        fastcgi_cache_valid 404 1m;
+        fastcgi_cache_bypass $skip_cache;
+        fastcgi_no_cache $skip_cache;
+        fastcgi_cache_use_stale error timeout updating invalid_header http_500;
+        fastcgi_cache_lock on;
+
+        add_header X-Cache $upstream_cache_status always;
+    }
+}

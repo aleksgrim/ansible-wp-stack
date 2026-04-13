@@ -1,0 +1,87 @@
+---
+# Удаление сайта:
+# ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mysite.com"
+
+- name: Remove WordPress site
+  hosts: vps
+  gather_facts: false
+
+  vars:
+    site_user:  "{{ domain | regex_replace('\\..*$', '') }}---admin"
+    site_name:  "{{ domain | replace('.', '_') | replace('-', '_') }}"
+    chroot_dir: "/var/www/{{ site_user }}"
+    sock_name:  "php{{ php_version }}-fpm-{{ domain | regex_replace('\\..*$', '') }}"
+    pool_name:  "{{ site_user }}"
+
+  pre_tasks:
+    - name: Confirm deletion
+      ansible.builtin.pause:
+        prompt: "Удалить сайт {{ domain }}? Введи YES для подтверждения"
+      register: confirm
+
+    - name: Abort if not confirmed
+      ansible.builtin.fail:
+        msg: "Отменено"
+      when: confirm.user_input != "YES"
+
+  tasks:
+    - name: Remove Nginx vhost
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/etc/nginx/sites-enabled/{{ domain }}"
+        - "/etc/nginx/sites-available/{{ domain }}"
+      notify: Reload nginx
+
+    - name: Remove PHP-FPM pool
+      ansible.builtin.file:
+        path: "/etc/php/{{ php_version }}/fpm/pool.d/{{ pool_name }}.conf"
+        state: absent
+      notify: Restart php-fpm
+
+    - name: Remove SFTP chroot block from sshd_config
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        marker: "# {mark} SFTP CHROOT {{ site_user }}"
+        state: absent
+      notify: Reload ssh
+
+    - name: Drop MySQL database
+      community.mysql.mysql_db:
+        name: "{{ site_name }}"
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Drop MySQL user
+      community.mysql.mysql_user:
+        name: "{{ site_name }}"
+        host: localhost
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Remove webroot directory
+      ansible.builtin.file:
+        path: "{{ chroot_dir }}"
+        state: absent
+
+    - name: Remove system user
+      ansible.builtin.user:
+        name: "{{ site_user }}"
+        state: absent
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    - name: Restart php-fpm
+      ansible.builtin.service:
+        name: "php{{ php_version }}-fpm"
+        state: restarted
+
+    - name: Reload ssh
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded

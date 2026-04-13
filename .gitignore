@@ -1,0 +1,13 @@
+credentials/
+inventory/hosts.yml
+
+*.retry
+*.log
+
+venv/
+.venv/
+__pycache__/
+
+
+.DS_Store
+

@@ -1,0 +1,87 @@
+---
+# Запуск нового WP сайта:
+# ansible-playbook -i inventory/hosts.yml playbooks/new_site.yml -e "domain=mysite.com"
+
+- name: Deploy new WordPress site
+  hosts: vps
+  gather_facts: false
+
+  vars:
+    php_version: "8.5"
+    nginx_cache_path: /var/cache/nginx/fastcgi
+    nginx_cache_zone: FASTCGI_CACHE
+
+    site_user:     "{{ domain | regex_replace('\\..*$', '') }}---admin"
+    site_name:     "{{ domain | regex_replace('\\..*$', '') | replace('-', '_') }}"
+    webroot:       "/var/www/{{ site_user }}/{{ domain }}/public"
+    chroot_dir:    "/var/www/{{ site_user }}"
+    sock_name:     "php{{ php_version }}-fpm-{{ domain | regex_replace('\\..*$', '') }}"
+    pool_name:     "{{ site_user }}"
+
+    sftp_password: "{{ lookup('password', playbook_dir + '/../credentials/' + domain + '/.sftp length=32 chars=ascii_letters,digits') }}"
+    db_password:   "{{ lookup('password', playbook_dir + '/../credentials/' + domain + '/.db length=32 chars=ascii_letters,digits') }}"
+
+    db_name:       "{{ site_name }}"
+    db_user:       "{{ site_name }}"
+
+  pre_tasks:
+    - name: Create credentials directory
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../credentials/{{ domain }}"
+        state: directory
+        mode: '0700'
+      delegate_to: localhost
+
+    - name: Validate domain is provided
+      ansible.builtin.fail:
+        msg: "Укажи домен: -e domain=mysite.com"
+      when: domain is not defined
+
+    - name: Show what will be created
+      ansible.builtin.debug:
+        msg:
+          - "Domain:      {{ domain }}"
+          - "User:        {{ site_user }}"
+          - "Webroot:     {{ webroot }}"
+          - "DB name:     {{ db_name }}"
+          - "DB user:     {{ db_user }}"
+          - "SFTP pass:   {{ sftp_password }}"
+          - "DB pass:     {{ db_password }}"
+
+  roles:
+    - role: system_user
+    - role: sftp_chroot
+    - role: php_fpm_pool
+    - role: nginx_vhost
+    - role: mysql_db
+    - role: wordpress
+
+  post_tasks:
+    - name: Save credentials to local file
+      ansible.builtin.copy:
+        content: |
+          === {{ domain }} ===
+          Created: {{ ansible_date_time.iso8601 | default('now') }}
+
+          SFTP:
+            Host:     {{ ansible_host }}
+            Port:     2044
+            User:     {{ site_user }}
+            Password: {{ sftp_password }}
+
+          MySQL:
+            DB:       {{ db_name }}
+            User:     {{ db_user }}
+            Password: {{ db_password }}
+
+          WordPress:
+            URL:      http://{{ domain }}
+            Admin:    http://{{ domain }}/wp-admin
+        dest: "{{ playbook_dir }}/../credentials/{{ domain }}/credentials.txt"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: Done
+      ansible.builtin.debug:
+        msg: "✅ Сайт {{ domain }} готов! Credentials: {{ playbook_dir }}/../credentials/{{ domain }}/credentials.txt"
+

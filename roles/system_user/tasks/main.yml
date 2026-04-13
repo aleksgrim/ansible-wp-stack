@@ -1,0 +1,31 @@
+---
+- name: Create site system user (no home, no shell)
+  ansible.builtin.user:
+    name: "{{ site_user }}"
+    shell: /usr/sbin/nologin
+    create_home: false
+    groups: www-data
+    append: true
+    state: present
+
+- name: Set SFTP password for user
+  ansible.builtin.user:
+    name: "{{ site_user }}"
+    password: "{{ sftp_password | password_hash('sha512') }}"
+
+- name: Create chroot root directory (owned by root for SSH chroot)
+  ansible.builtin.file:
+    path: "{{ chroot_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create webroot directory (owned by site user)
+  ansible.builtin.file:
+    path: "{{ webroot }}"
+    state: directory
+    owner: "{{ site_user }}"
+    group: www-data
+    mode: '0750'
+    recurse: false
