@@ -87,7 +87,7 @@ After deployment, credentials are saved to `credentials/<domain>/credentials.txt
 - User:     mysite---admin
 - Password: ...
 
-###MySQL:
+### MySQL:
 - DB:       mysite_com
 - User:     mysite_com
 - Password: ...
