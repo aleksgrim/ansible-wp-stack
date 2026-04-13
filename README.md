@@ -6,8 +6,6 @@
 ansible-wp/
 ├── inventory/
 │   └── hosts.yml              ← Server IP and SSH credentials
-├── group_vars/
-│   └── all.yml                ← Global variables (PHP version, etc.)
 ├── roles/
 │   ├── system_user/           ← Creates Linux user and directories
 │   ├── sftp_chroot/           ← Adds SFTP chroot block to sshd_config
