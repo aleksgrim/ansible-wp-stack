@@ -3,7 +3,7 @@
   ansible.builtin.apt:
     name:
       - mysql-server
-      - python3-pymysql    # нужен для ansible mysql модулей
+      - python3-pymysql    # required for ansible mysql modules
     state: present
     update_cache: false
 

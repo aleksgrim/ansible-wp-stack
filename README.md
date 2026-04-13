@@ -1,84 +1,83 @@
-# ansible-wp — автодеплой WordPress сайтов
+# ansible-wp — WordPress Auto-Deployment Stack
 
-## Структура
+## Structure
 
 ```
 ansible-wp/
 ├── inventory/
-│   └── hosts.yml              ← IP сервера и SSH данные
+│   └── hosts.yml              ← Server IP and SSH credentials
 ├── group_vars/
-│   └── all.yml                ← глобальные переменные (php версия и т.д.)
+│   └── all.yml                ← Global variables (PHP version, etc.)
 ├── roles/
-│   ├── system_user/           ← создаёт Linux юзера + папки
-│   ├── sftp_chroot/           ← добавляет блок в sshd_config
-│   ├── php_fpm_pool/          ← создаёт PHP-FPM пул
-│   ├── nginx_vhost/           ← создаёт Nginx vhost
-│   ├── mysql_db/              ← создаёт БД и MySQL юзера
-│   └── wordpress/             ← скачивает WP, права, wp-config.php
+│   ├── system_user/           ← Creates Linux user and directories
+│   ├── sftp_chroot/           ← Adds SFTP chroot block to sshd_config
+│   ├── php_fpm_pool/          ← Creates PHP-FPM pool
+│   ├── nginx_vhost/           ← Creates Nginx vhost
+│   ├── mysql_db/              ← Creates Database and MySQL user
+│   └── wordpress/             ← Downloads WP, sets permissions, wp-config.php
 ├── playbooks/
-│   └── new_site.yml           ← главный плейбук
-└── credentials/               ← сюда сохраняются пароли (gitignore!)
+│   └── new_site.yml           ← Main deployment playbook
+└── credentials/               ← Local storage for generated passwords (gitignore!)
 ```
 
-## Установка зависимостей
+## Prerequisites
 
 ```bash
-pip install ansible --break-system-packages
+pip install ansible
 ansible-galaxy collection install community.mysql
 ```
 
-## Настройка
+## Setup
 
-1. Скопируй пример inventory:
+1. Copy the example inventory:
 ```bash
 cp inventory/hosts-example.yml inventory/hosts.yml
 ```
-2. Заполни `inventory/hosts.yml` своими данными
-3. Убедись что `inventory/hosts.yml` не попал в git — он в `.gitignore`
+2. Fill `inventory/hosts.yml` with your server data.
+3. Ensure `inventory/hosts.yml` is ignored by git (it is in `.gitignore` by default).
 
-
-## Запуск нового сайта
+## Deploying a New Site
 
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/new_site.yml -e "domain=mysite.com"
 ```
 
-## Что создаётся автоматически из домена
+## Automatic Generation Details
 
-| Из домена `mysite.com` | Результат |
+| From domain `mysite.com` | Resulting value |
 |---|---|
-| Linux юзер | `mysite---admin` |
-| SFTP chroot | `/var/www/mysite---admin` |
+| Linux User | `mysite---admin` |
+| SFTP Chroot | `/var/www/mysite---admin` |
 | Webroot | `/var/www/mysite---admin/mysite.com/public` |
-| PHP-FPM пул | `/etc/php/8.5/fpm/pool.d/mysite---admin.conf` |
-| PHP сокет | `/run/php/php8.5-fpm-mysite.sock` |
-| Nginx vhost | `/etc/nginx/sites-available/mysite.com` |
-| MySQL БД | `mysite_com` |
-| MySQL юзер | `mysite_com` |
-| SFTP пароль | генерируется случайно |
-| DB пароль | генерируется случайно |
+| PHP-FPM Pool | `/etc/php/8.5/fpm/pool.d/mysite---admin.conf` |
+| PHP Socket | `/run/php/php8.5-fpm-mysite.sock` |
+| Nginx Vhost | `/etc/nginx/sites-available/mysite.com` |
+| MySQL DB | `mysite_com` |
+| MySQL User | `mysite_com` |
+| SFTP Password | Randomly generated |
+| DB Password | Randomly generated |
 
 ## Credentials
 
-После деплоя пароли сохраняются в `credentials/<domain>.txt`
+After deployment, credentials are saved to `credentials/<domain>/credentials.txt`.
 
 ```
 === mysite.com ===
 SFTP:
-  Host:     192.168.62.136
-  Port:     2044
+  Host:     YOUR_SERVER_IP
+  Port:     22
   User:     mysite---admin
-  Password: Xk9#mP...
+  Password: [GENERATED_PASSWORD]
 
 MySQL:
   DB:       mysite_com
   User:     mysite_com
-  Password: zR7$nQ...
+  Password: [GENERATED_PASSWORD]
 ```
 
-⚠️ Добавь `credentials/` в `.gitignore`!
+⚠️ Remember to keep the `credentials/` folder in `.gitignore`!
 
-## Удаление сайта
+## Removing a Site
 
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mysite.com"

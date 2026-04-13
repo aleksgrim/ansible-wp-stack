@@ -1,5 +1,5 @@
 ---
-# Запуск нового WP сайта:
+# Deploy a new WordPress site:
 # ansible-playbook -i inventory/hosts.yml playbooks/new_site.yml -e "domain=mysite.com"
 
 - name: Deploy new WordPress site
@@ -34,7 +34,7 @@
 
     - name: Validate domain is provided
       ansible.builtin.fail:
-        msg: "Укажи домен: -e domain=mysite.com"
+        msg: "Please provide a domain: -e domain=mysite.com"
       when: domain is not defined
 
     - name: Show what will be created
@@ -83,5 +83,4 @@
 
     - name: Done
       ansible.builtin.debug:
-        msg: "✅ Сайт {{ domain }} готов! Credentials: {{ playbook_dir }}/../credentials/{{ domain }}/credentials.txt"
-
+        msg: "✅ Site {{ domain }} is ready! Credentials saved to: {{ playbook_dir }}/../credentials/{{ domain }}/credentials.txt"

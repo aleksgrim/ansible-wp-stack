@@ -1,5 +1,5 @@
 ---
-# Удаление сайта:
+# Remove a site:
 # ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mysite.com"
 
 - name: Remove WordPress site
@@ -16,12 +16,12 @@
   pre_tasks:
     - name: Confirm deletion
       ansible.builtin.pause:
-        prompt: "Удалить сайт {{ domain }}? Введи YES для подтверждения"
+        prompt: "Remove site {{ domain }}? Type 'YES' to confirm"
       register: confirm
 
     - name: Abort if not confirmed
       ansible.builtin.fail:
-        msg: "Отменено"
+        msg: "Aborted by user"
       when: confirm.user_input != "YES"
 
   tasks:
@@ -73,15 +73,15 @@
   handlers:
     - name: Reload nginx
       ansible.builtin.service:
-        name: nginx
-        state: reloaded
+          name: nginx
+          state: reloaded
 
     - name: Restart php-fpm
       ansible.builtin.service:
-        name: "php{{ php_version }}-fpm"
-        state: restarted
+          name: "php{{ php_version }}-fpm"
+          state: restarted
 
     - name: Reload ssh
       ansible.builtin.service:
-        name: ssh
-        state: reloaded
+          name: ssh
+          state: reloaded
