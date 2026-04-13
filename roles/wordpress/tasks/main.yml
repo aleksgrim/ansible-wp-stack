@@ -65,3 +65,9 @@
   ansible.builtin.file:
     path: /tmp/wordpress.tar.gz
     state: absent
+
+- name: Clean up tmp/wordpress folder
+  ansible.builtin.file:
+    path: /tmp/wordpress
+    state: absent
+
