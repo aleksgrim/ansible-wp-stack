@@ -14,6 +14,13 @@
     group: www-data
     mode: '0755'
 
+- name: Remove legacy fastcgi_cache_path from nginx.conf
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^\s*fastcgi_cache_path.*'
+    state: absent
+  notify: Reload nginx
+
 - name: Deploy FastCGI cache config
   ansible.builtin.template:
     src: fastcgi_cache.conf.j2
@@ -42,11 +49,3 @@
 - name: Validate nginx config
   ansible.builtin.command: nginx -t
   changed_when: false
-  failed_when: false
-  register: nginx_test
-
-- name: Reload nginx
-  ansible.builtin.service:
-    name: nginx
-    state: reloaded
-  when: nginx_test.rc == 0
