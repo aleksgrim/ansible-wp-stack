@@ -81,16 +81,16 @@ ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mys
 
 After deployment, credentials are saved to `credentials/<domain>/credentials.txt`
 
-=== mysite.com ===
-SFTP:
-Host:     YOUR_SERVER_IP
-Port:     2044
-User:     mysite---admin
-Password: ...
-MySQL:
-DB:       mysite_com
-User:     mysite_com
-Password: ...
+### SFTP:
+- Host:     YOUR_SERVER_IP
+- Port:     2044
+- User:     mysite---admin
+- Password: ...
+
+###MySQL:
+- DB:       mysite_com
+- User:     mysite_com
+- Password: ...
 
 ⚠️ `credentials/` is in `.gitignore` — never commit it!
 
