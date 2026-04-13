@@ -1,100 +1,104 @@
-# ansible-wp — WordPress Auto-Deployment Stack
+# ansible-wp-stack
 
-## Structure
+Automated WordPress stack provisioning with Ansible — Nginx, PHP-FPM, MySQL, SFTP isolation per site.
 
-```
-ansible-wp/
-├── inventory/
-│   └── hosts.yml              ← Server IP and SSH credentials
-├── roles/
-│   ├── system_user/           ← Creates Linux user and directories
-│   ├── sftp_chroot/           ← Adds SFTP chroot block to sshd_config
-│   ├── php_fpm_pool/          ← Creates PHP-FPM pool
-│   ├── nginx_vhost/           ← Creates Nginx vhost
-│   ├── mysql_db/              ← Creates Database and MySQL user
-│   └── wordpress/             ← Downloads WP, sets permissions, wp-config.php
-├── playbooks/
-│   └── new_site.yml           ← Main deployment playbook
-└── credentials/               ← Local storage for generated passwords (gitignore!)
-```
+## Server Requirements
 
-## Prerequisites
+Before running the playbook, the server must meet these requirements:
 
+### OS
+- Ubuntu 22.04 / 24.04 LTS
+
+### SSH access
+- SSH key added to server for your sudo user (e.g. `alex3`)
+- SSH key must NOT be password-protected (or added to `ssh-agent` before running)
+- `sudo` configured without password for your user:
 ```bash
-pip install ansible
+  printf 'USERNAME ALL=(ALL) NOPASSWD: ALL\n' | sudo tee /etc/sudoers.d/USERNAME
+  sudo chmod 440 /etc/sudoers.d/USERNAME
+```
+
+### Required packages on server
+- `python3` (for Ansible modules)
+- `python3-pymysql` (for MySQL Ansible module) — installed automatically by playbook
+
+### Local machine requirements
+- Ansible `>= 2.15`
+- Python package `passlib`
+- Ansible collection `community.mysql`
+
+Install with:
+```bash
+pip install ansible passlib
 ansible-galaxy collection install community.mysql
 ```
 
 ## Setup
 
-1. Copy the example inventory:
+1. Copy example inventory:
 ```bash
 cp inventory/hosts-example.yml inventory/hosts.yml
 ```
-2. Fill `inventory/hosts.yml` with your server data.
-3. Ensure `inventory/hosts.yml` is ignored by git (it is in `.gitignore` by default).
 
-## Deploying a New Site
+2. Fill in `inventory/hosts.yml` with your server details:
+```yaml
+ansible_host: YOUR_SERVER_IP
+ansible_user: YOUR_SSH_USER
+ansible_port: YOUR_SSH_PORT
+ansible_ssh_private_key_file: ~/.ssh/YOUR_KEY
+```
 
+3. Make sure `inventory/hosts.yml` is not committed — it's in `.gitignore`
+
+## Usage
+
+### Deploy new WordPress site
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/new_site.yml -e "domain=mysite.com"
 ```
 
-## Automatic Generation Details
-
-| From domain `mysite.com` | Resulting value |
-|---|---|
-| Linux User | `mysite---admin` |
-| SFTP Chroot | `/var/www/mysite---admin` |
-| Webroot | `/var/www/mysite---admin/mysite.com/public` |
-| PHP-FPM Pool | `/etc/php/8.5/fpm/pool.d/mysite---admin.conf` |
-| PHP Socket | `/run/php/php8.5-fpm-mysite.sock` |
-| Nginx Vhost | `/etc/nginx/sites-available/mysite.com` |
-| MySQL DB | `mysite_com` |
-| MySQL User | `mysite_com` |
-| SFTP Password | Randomly generated |
-| DB Password | Randomly generated |
-
-## Credentials
-
-After deployment, credentials are saved to `credentials/<domain>/credentials.txt`.
-
-```
-=== mysite.com ===
-SFTP:
-  Host:     YOUR_SERVER_IP
-  Port:     22
-  User:     mysite---admin
-  Password: [GENERATED_PASSWORD]
-
-MySQL:
-  DB:       mysite_com
-  User:     mysite_com
-  Password: [GENERATED_PASSWORD]
-```
-
-⚠️ Remember to keep the `credentials/` folder in `.gitignore`!
-
-## Removing a Site
-
+### Remove a site
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mysite.com"
 ```
 
-## Check
+## What gets created automatically from domain name
 
-```bash
-domain=""
-user=""
-site_name=""
+| From domain `mysite.com` | Result |
+|---|---|
+| Linux user | `mysite---admin` |
+| SFTP chroot | `/var/www/mysite---admin` |
+| Webroot | `/var/www/mysite---admin/mysite.com/public` |
+| PHP-FPM pool | `/etc/php/8.5/fpm/pool.d/mysite---admin.conf` |
+| PHP socket | `/run/php/php8.5-fpm-mysite.sock` |
+| Nginx vhost | `/etc/nginx/sites-available/mysite.com` |
+| MySQL DB | `mysite_com` |
+| MySQL user | `mysite_com` |
+| SFTP password | auto-generated, stable |
+| DB password | auto-generated, stable |
 
-echo "=== Linux user ===" && id $user 2>&1
-echo "=== Webroot ===" && ls /var/www/$user 2>&1
-echo "=== PHP-FPM pool ===" && ls /etc/php/8.5/fpm/pool.d/$user.conf 2>&1
-echo "=== Nginx vhost ===" && ls /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/$domain 2>&1
-echo "=== SFTP sshd_config ===" && grep -A 6 "$user" /etc/ssh/sshd_config 2>&1
-echo "=== MySQL DB ===" && sudo mysql -u root -e "SHOW DATABASES LIKE '${site_name}';" 2>&1
-echo "=== MySQL user ===" && sudo mysql -u root -e "SELECT user, host FROM mysql.user WHERE user='${site_name}';" 2>&1
-```
+## Credentials
 
+After deployment, credentials are saved to `credentials/<domain>/credentials.txt`
+
+=== mysite.com ===
+SFTP:
+Host:     YOUR_SERVER_IP
+Port:     2044
+User:     mysite---admin
+Password: ...
+MySQL:
+DB:       mysite_com
+User:     mysite_com
+Password: ...
+
+⚠️ `credentials/` is in `.gitignore` — never commit it!
+
+## Stack
+
+- **Nginx** + FastCGI cache
+- **PHP 8.5** (Ondřej Surý PPA) + OPcache
+- **MySQL** — isolated DB per site
+- **SFTP** — chroot per site, password auth for `*---admin` users only
+- **WordPress** — latest, auto-configured
 

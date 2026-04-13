@@ -10,4 +10,3 @@ all:
       ansible_ssh_pipelining: true
       ansible_timeout: 120
 
-      
