@@ -7,8 +7,10 @@
   gather_facts: false
 
   vars:
+    php_version: "8.5"
+
     site_user:  "{{ domain | regex_replace('\\..*$', '') }}---admin"
-    site_name:  "{{ domain | replace('.', '_') | replace('-', '_') }}"
+    site_name:  "{{ domain | regex_replace('\\..*$', '') | replace('-', '_') }}"
     chroot_dir: "/var/www/{{ site_user }}"
     sock_name:  "php{{ php_version }}-fpm-{{ domain | regex_replace('\\..*$', '') }}"
     pool_name:  "{{ site_user }}"
@@ -34,11 +36,29 @@
         - "/etc/nginx/sites-available/{{ domain }}"
       notify: Reload nginx
 
-    - name: Remove PHP-FPM pool
+    - name: Remove PHP-FPM pool config
       ansible.builtin.file:
         path: "/etc/php/{{ php_version }}/fpm/pool.d/{{ pool_name }}.conf"
         state: absent
-      notify: Restart php-fpm
+
+    - name: Stop PHP-FPM to release all pool processes
+      ansible.builtin.service:
+        name: "php{{ php_version }}-fpm"
+        state: stopped
+
+    - name: Kill any remaining processes owned by site user
+      ansible.builtin.shell: |
+        pkill -9 -u {{ site_user }} || true
+      changed_when: false
+
+    - name: Wait for processes to die
+      ansible.builtin.pause:
+        seconds: 2
+
+    - name: Start PHP-FPM back up
+      ansible.builtin.service:
+        name: "php{{ php_version }}-fpm"
+        state: started
 
     - name: Remove SFTP chroot block from sshd_config
       ansible.builtin.blockinfile:
@@ -69,19 +89,17 @@
       ansible.builtin.user:
         name: "{{ site_user }}"
         state: absent
+        remove: true
 
   handlers:
     - name: Reload nginx
       ansible.builtin.service:
-          name: nginx
-          state: reloaded
-
-    - name: Restart php-fpm
-      ansible.builtin.service:
-          name: "php{{ php_version }}-fpm"
-          state: restarted
+        name: nginx
+        state: reloaded
 
     - name: Reload ssh
       ansible.builtin.service:
-          name: ssh
-          state: reloaded
+        name: ssh
+        state: reloaded
+
+        

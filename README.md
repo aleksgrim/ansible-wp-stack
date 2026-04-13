@@ -82,3 +82,21 @@ MySQL:
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/remove_site.yml -e "domain=mysite.com"
 ```
+
+## Check
+
+```bash
+domain=""
+user=""
+site_name=""
+
+echo "=== Linux user ===" && id $user 2>&1
+echo "=== Webroot ===" && ls /var/www/$user 2>&1
+echo "=== PHP-FPM pool ===" && ls /etc/php/8.5/fpm/pool.d/$user.conf 2>&1
+echo "=== Nginx vhost ===" && ls /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/$domain 2>&1
+echo "=== SFTP sshd_config ===" && grep -A 6 "$user" /etc/ssh/sshd_config 2>&1
+echo "=== MySQL DB ===" && sudo mysql -u root -e "SHOW DATABASES LIKE '${site_name}';" 2>&1
+echo "=== MySQL user ===" && sudo mysql -u root -e "SELECT user, host FROM mysql.user WHERE user='${site_name}';" 2>&1
+```
+
+
